@@ -24,8 +24,10 @@ class HDRPlus {
 
         // dimensions of pixel phone output images are 3036 x 4048
 
-        static const int width = 5796;
-        static const int height = 3870;
+        // static const int width = 5796;
+        // static const int height = 3870;
+        static const int width = 4160;
+        static const int height = 3120;
 
         const BlackPoint bp;
         const WhitePoint wp;
