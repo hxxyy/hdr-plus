@@ -7,6 +7,7 @@
 #include "align.h"
 #include "merge.h"
 #include "finish.h"
+#include <math.h>
 
 using namespace Halide;
 
@@ -14,6 +15,32 @@ using namespace Halide;
  * HDRPlus Class -- Houses file I/O, defines pipeline attributes and calls
  * processes main stages of the pipeline.
  */
+
+void GetBWLevels(std::string img_path, BlackPoint &img_b, WhitePoint &img_w)
+{
+    Tools::Internal::PipeOpener f(("exiftool " + img_path).c_str(), "r");
+    char buf[1024];
+    img_w = 0;
+    img_b = 0;
+    while(f.f != nullptr) {
+        f.readLine(buf, 1024);
+        float b, w;
+        if(sscanf(buf, "White Level                     : %f", &w) == 1) {
+            img_w = (int)floor(w);
+            printf("White level: %d\n", img_w);
+            if(img_w != 0 && img_b != 0)
+                return;
+        }
+        if(sscanf(buf, "Black Level                     : %f", &b) == 1) {
+            img_b = (int)floor(b);
+            printf("Black level: %d\n", img_b);
+            if(img_w != 0 && img_b != 0)
+                return;
+        }
+    }
+}
+
+
 class HDRPlus {
 
     private:
@@ -26,8 +53,10 @@ class HDRPlus {
 
         // static const int width = 5796;
         // static const int height = 3870;
-        static const int width = 4160;
-        static const int height = 3120;
+        // static const int width = 4160;
+        // static const int height = 3120;
+        static const int width = 5202;
+        static const int height = 3465;
 
         const BlackPoint bp;
         const WhitePoint wp;
@@ -193,6 +222,9 @@ int main(int argc, char* argv[]) {
     const WhiteBalance wb = read_white_balance(dir_path + "/" + in_names[0]);
     const BlackPoint bp = 2050;
     const WhitePoint wp = 15464;
+    // BlackPoint bp;
+    // WhitePoint wp;
+    // GetBWLevels(dir_path + "/" + in_names[0], bp, wp);
 
     HDRPlus hdr_plus = HDRPlus(imgs, bp, wp, wb, c, g);
 
