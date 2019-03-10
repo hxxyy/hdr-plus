@@ -16,6 +16,22 @@ using namespace Halide;
  * processes main stages of the pipeline.
  */
 
+void GetImageDimensios(std::string img_path, int &img_width, int &img_height)
+{
+    Tools::Internal::PipeOpener f(("dcraw -v -i " + img_path).c_str(), "r");
+    char buf[1024];
+    while(f.f != nullptr) {
+        f.readLine(buf, 1024);
+        int w, h;
+        if(sscanf(buf, "Image size:  %d x %d", &w, &h) == 2) {
+            img_width = w;
+            img_height = h;
+            printf("Dimensions: width = %d and height = %d\n", w, h);
+            return;
+        }
+    }
+}
+
 void GetBWLevels(std::string img_path, BlackPoint &img_b, WhitePoint &img_w)
 {
     Tools::Internal::PipeOpener f(("exiftool " + img_path).c_str(), "r");
@@ -51,12 +67,8 @@ class HDRPlus {
 
         // dimensions of pixel phone output images are 3036 x 4048
 
-        // static const int width = 5796;
-        // static const int height = 3870;
-        // static const int width = 4160;
-        // static const int height = 3120;
-        static const int width = 5202;
-        static const int height = 3465;
+        static int width;
+        static int height;
 
         const BlackPoint bp;
         const WhitePoint wp;
@@ -65,7 +77,7 @@ class HDRPlus {
         const Gain g;
 
         HDRPlus(Image<uint16_t> imgs, BlackPoint bp, WhitePoint wp, WhiteBalance wb, Compression c, Gain g) : imgs(imgs), bp(bp), wp(wp), wb(wb), c(c), g(g) {
-
+            
             assert(imgs.dimensions() == 3);         // width * height * img_idx
             assert(imgs.width() == width);
             assert(imgs.height() == height);
@@ -85,7 +97,7 @@ class HDRPlus {
             // realize image
             ///////////////////////////////////////////////////////////////////////////
 
-            Image<uint8_t> output_img(3, width, height);
+            Image<uint8_t> output_img(3, width,height);
 
             finished.realize(output_img);
 
@@ -101,6 +113,10 @@ class HDRPlus {
          * load_raws -- Loads CR2 (Canon Raw) files into a Halide Image.
          */
         static bool load_raws(std::string dir_path, std::vector<std::string> &img_names, Image<uint16_t> &imgs) {
+
+                if(width == 0 && height == 0){
+                    GetImageDimensios(dir_path + "/" + img_names[0], width,height);
+                }
 
             int num_imgs = img_names.size();
 
@@ -145,12 +161,17 @@ class HDRPlus {
         }
 };
 
+// Set deafult width and height
+
+int HDRPlus::width = 0;
+int HDRPlus::height = 0;
+
 /*
  * read_white_balance -- Reads white balance multipliers from file and returns WhiteBalance.
  */
 const WhiteBalance read_white_balance(std::string file_path) {
 
-    Tools::Internal::PipeOpener f(("../tools/dcraw -v -i " + file_path).c_str(), "r");
+    Tools::Internal::PipeOpener f(("dcraw -v -i " + file_path).c_str(), "r");
     
     char buf[1024];
 
@@ -161,10 +182,12 @@ const WhiteBalance read_white_balance(std::string file_path) {
         float r, g0, g1, b;
 
         if(sscanf(buf, "Camera multipliers: %f %f %f %f", &r, &g0, &b, &g1) == 4) {
-
+            if(g1 == 0) g1 = g0;
             float m = std::min(std::min(r, g0), std::min(g1, b));
 
-            return {r / m, g0 / m, g1 / m, b / m};
+            // return {r / m, g0 / m, g1 / m, b / m};
+            return {b / m, g0 / m, g1 / m, r / m};
+
         }
     }
 
@@ -220,11 +243,10 @@ int main(int argc, char* argv[]) {
     if(!HDRPlus::load_raws(dir_path, in_names, imgs)) return -1;
 
     const WhiteBalance wb = read_white_balance(dir_path + "/" + in_names[0]);
-    const BlackPoint bp = 2050;
-    const WhitePoint wp = 15464;
-    // BlackPoint bp;
-    // WhitePoint wp;
-    // GetBWLevels(dir_path + "/" + in_names[0], bp, wp);
+    BlackPoint bp ;
+    WhitePoint wp ;
+    GetBWLevels(dir_path + "/" + in_names[0], bp, wp);
+
 
     HDRPlus hdr_plus = HDRPlus(imgs, bp, wp, wb, c, g);
 
