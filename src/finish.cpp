@@ -680,8 +680,11 @@ Func u8bit_interleaved(Func input) {
 Func finish(Func input, int width, int height, const BlackPoint bp, const WhitePoint wp, const WhiteBalance &wb, const Compression c, const Gain g) {
 
     int denoise_passes = 1;
+    // float contrast_strength = 5.f;
     float contrast_strength = 5.f;
+
     int black_level = 2000;
+    // float sharpen_strength = 2.f;
     float sharpen_strength = 2.f;
 
     // 1. Black-level subtraction and white-level scaling
@@ -719,6 +722,8 @@ Func finish(Func input, int width, int height, const BlackPoint bp, const WhiteP
     // 9. Sharpening
 
     Func sharpen_output = sharpen(contrast_output, sharpen_strength);
+    // Func sharpen_output = sharpen(gamma_correct_output, sharpen_strength);
 
-    return u8bit_interleaved(contrast_output);
+
+    return u8bit_interleaved(sharpen_output);
 }

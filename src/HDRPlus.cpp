@@ -8,9 +8,10 @@
 #include "merge.h"
 #include "finish.h"
 #include <math.h>
+#include <ctime>
 
 using namespace Halide;
-
+clock_t start_time,end_time;
 /*
  * HDRPlus Class -- Houses file I/O, defines pipeline attributes and calls
  * processes main stages of the pipeline.
@@ -195,7 +196,9 @@ const WhiteBalance read_white_balance(std::string file_path) {
 }
 
 int main(int argc, char* argv[]) {
-    
+    	start_time=clock();		//程序开始计时
+	 
+	
     if (argc < 5) {
         std::cerr << "Usage: " << argv[0] << " [options] dir_path out_img raw_img1 raw_img2 [...]" << std::endl;
         return 1;
@@ -254,5 +257,10 @@ int main(int argc, char* argv[]) {
     
     if(!HDRPlus::save_png(dir_path, out_name, output)) return -1;
 
+   
+	end_time=clock();		//程序结束用时
+    double endtime=(double)(end_time-start_time)/CLOCKS_PER_SEC;
+	 
+    printf("Total time: %f s\n", endtime );
     return 0;
 }
